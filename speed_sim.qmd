@@ -1,0 +1,213 @@
+---
+title: "Speed sim"
+author: "Benjamin Bagley"
+format: html
+editor: visual
+---
+
+## The rules of Speed
+
+Speed is a game played by with a number of stacks (usually 2) of cards with one card each to start, then the rest of the cards dealt evenly to each player. Each player picks up 5 cards, and they can play the card on any of the stacks if the stacked card is one above or below theirs. There is no turn order, everyone plays as fast as possible. The first one to empty their deck wins. (an ace can be played on a king and vice versa)
+
+I want to know the probability of getting stuck i.e. no player is able to play any of their cards. Normally, two reserve piles of 3 cards each are dealt during setup to refresh the top card when both players get stuck.
+
+## Functions
+
+```{r}
+make_decks <- function(n, size) { # returns list of n decks of size cards pulled from the global "deck" variable
+  cards <- deck[1:(n*size)]
+  decks <- split(cards, 1:n)
+  deck <<- deck[-(1:(n*size))]
+  return(decks)
+}
+```
+
+## Setup
+
+Create a list of 52 cards in random order. Stacks is a list of vectors, one for each playable stack on the table. Reserves is a list of vectors, one for each reserve pile. Hands is a list of vectors, one for each player's deck
+
+```{r}
+setup <- function( players_num = 2, 
+                   stack_num = 2, 
+                   reserve_size = 3, 
+                   hand_size = 5, 
+                   suits = 4, 
+                   numbers = 13 ) {
+  suit <- 1:numbers
+  deck <<- sample(rep(suit, suits)) #sample randomly permutes the deck
+  # Pick starting cards
+  stacks <<- make_decks(stack_num,1)
+  
+  # Make reserve decks
+  reserves <<- unlist(make_decks(1,reserve_size * stack_num))
+  
+  # Deal remaining cards to each player
+  hands <<- make_decks(players_num, length(deck)/players_num)
+}
+```
+
+## Play
+
+The players alternate playing the first of their first five cards on a stack that they can, and continue alternating until they get stuck.
+
+```{r}
+
+play_card <- function (hand, 
+                       hand_size = 5, 
+                       numbers = 13, 
+                       debug = 0) { # hand is a number representing the player that is playing the card
+  playing_hand <- as.vector(na.omit(hands[[hand]][1:hand_size])) # take the first 5 cards from the hand playing the card
+  if (debug >= 1) {print(c("Hand: ", hand, "|", playing_hand))}
+  stack_index <- 0
+  played <- FALSE
+  for (stack in stacks) { # iterate over each stack
+    stack_index <- stack_index + 1
+    if (debug >= 2) {print(c("Stack ", stack_index, stack[[1]]))}
+    card_index <- 0
+    for (card_to_play in playing_hand) { # iterate over each card
+      card_index <- card_index + 1 # increase the index of the card
+      if (((card_to_play%%numbers) + 1) == stack[[1]] || card_to_play == ((stack[[1]]%%numbers) + 1)) { #checks if the card can be played on the stack
+        if (debug >= 1) {print(c(card_to_play, "playable!"))}
+        stack <- c(card_to_play, stack) # add playable card to the stack
+        hands[[hand]] <<- hands[[hand]][-card_index] # take the card out of the global hand variable
+        stacks[[stack_index]] <<- stack # replace the stack in the global stacks variable
+        return(card_to_play)
+      } else if (debug >= 2) {print(c(card_to_play, "Not playable!"))}
+    }
+  } 
+  return(0)
+}
+
+```
+
+## Game function
+
+A function containing the whole game, returning true if all cards get played and false if neither player can play any cards.
+
+```{r}
+play_speed <- function (n = 40, # number of rounds
+                        players_num = 2, # number of players
+                        stack_num = 2, # number of stacks to play cards on
+                        reserve_size = 3, # number of cards in each reserve stack (there is one reserve for every play stack)
+                        hand_size = 5, # number of playable cards at any one time
+                        suits = 4, # how many suits the deck has
+                        numbers = 13, # how many cards are in each suit
+                        debug = 0) { # attempts to play n rounds in a game of speed
+  setup( players_num = players_num, 
+         stack_num = stack_num, 
+         reserve_size = reserve_size, 
+         hand_size = hand_size, 
+         suits = suits, 
+         numbers = numbers)
+  for (round in 1:n) {
+    if (debug >= 1) {print(round)}
+    remainder <- length(as.vector(unlist(hands)))
+    card_sum <- 0
+    for (player in 1:players_num) {
+      card_sum <- card_sum + play_card(player, hand_size = hand_size, numbers = numbers, debug = debug)
+      if (debug >= 1) {print(c("sum of cards played", card_sum))}
+    }
+    if (card_sum == 0 && length(reserves)>0) { # put top card of reserve onto stacks
+      stack_index <- 0
+      for (stack in stacks) {
+        stack_index <- stack_index + 1
+        stacks[[stack_index]] <<- c(reserves[[1]], stack) # add card to the stack
+        reserves <<- reserves[-1] # take the card off the reserves stack
+      }
+    } else if (card_sum == 0 && length(reserves) == 0 && remainder > 0) { # the game failed to finish
+      return(FALSE)
+    } else if (remainder == 0) { # the game did finish
+      return(TRUE)
+    }
+  }
+}
+
+```
+
+## Replication
+
+Replicate the simulation n times, find the probability that the standard game finishes
+
+```{r warning = FALSE}
+n = 10000
+mean(replicate(n, play_speed(n = 40, 
+                             players_num = 3, 
+                             stack_num = 2, 
+                             reserve_size = 5, 
+                             hand_size = 5, 
+                             suits = 4, 
+                             numbers = 13)))
+```
+
+Plot probability of success (with 3000 trials) with different numbers of players
+
+```{r warning = FALSE}
+vec <- c()
+for (x in 1:10) {
+    vec <- c(vec, mean(replicate(3000, play_speed(players_num = x))))
+}
+plot(vec, xlab = "number of players")
+
+```
+
+Plot probability of success (with 3000 trials) with different hand sizes
+
+```{r warning = FALSE}
+vec <- c()
+for (x in 1:10) {
+    vec <- c(vec, mean(replicate(3000, play_speed(hand_size = x))))
+}
+plot(vec, xlab = "hand size")
+
+```
+
+Plot probability of success (with 3000 trials) with different reserve sizes
+
+```{r warning = FALSE}
+vec <- c()
+for (x in 1:10) {
+    vec <- c(vec, mean(replicate(3000, play_speed(reserve_size = x))))
+}
+plot(vec, xlab = "reserve size")
+
+```
+
+Plot probability of success (with 3000 trials) with different numbers of stacks
+
+```{r warning = FALSE}
+vec <- c()
+for (x in 1:10) {
+    vec <- c(vec, mean(replicate(3000, play_speed(stack_num = x))))
+}
+plot(vec, xlab = "playable stacks")
+
+```
+
+Plot probability of success (with 3000 trials) with different number of suits
+
+```{r warning = FALSE}
+vec <- c()
+for (x in 1:10) {
+    vec <- c(vec, mean(replicate(3000, play_speed(suits = x, n = 200))))
+}
+plot(vec, xlab = "suits in deck")
+
+```
+
+Plot probability of success (with 3000 trials) with different number of numbers (e.g. 1-17 instead of A-K)
+
+```{r warning = FALSE}
+vec <- c()
+for (x in 1:20) {
+    vec <- c(vec, mean(replicate(3000, play_speed(numbers = x, n = 200))))
+}
+plot(vec, xlab = "cards in suit")
+
+```
+
+```{r warning  = FALSE}
+test <- replicate(5000, play_speed())
+print(test)
+print(mean(test))
+
+```

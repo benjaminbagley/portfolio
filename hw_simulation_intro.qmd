@@ -1,0 +1,113 @@
+---
+title: "Statistics 240 Homework <br> Simulation: Introduction"
+author: Benjamin Bagley
+format: 
+  html:
+    self-contained: true
+    self-contained-math: true
+editor: visual
+---
+
+# Instructions
+
+1.  Fill in this `.qmd` file by modifying the given code, removing *italicized* instructions, and narrating your solutions.
+2.  Render this `.qmd` file to a `.html` file in RStudio.
+3.  Open the `.html` file with a web browser and save as a `.pdf` by going to the print menu and selecting "save as PDF."
+4.  Submit the `.pdf` file as with other homework assignments.
+
+## Exercise 1
+
+##### I have two fair, six-sided dice: a red die and a green die. If both dice are thrown, what is the probability that the red die will show a higher number than the green die?
+
+##### a) Calculate this probability by hand.
+
+Given that the green shows up as 1, red can be 2,3,4,5,6 – (1/6)\*(5/6)
+
+Given that the green shows up as 2, red can be 3,4,5,6 – (1/6)\*(4.6)
+
+...
+
+Given that the green shows up as 5, red can be 6 (1/6) \* (1/6)
+
+Given that the green shows up as 6, there is no chance for red to be bigger (1/6) \* (0/6)
+
+Summing these probabilities will give the total: (5+4+3+2+1+0)/36 = 15/36 = .4167
+
+##### b) Write an R function that simulates rolling the two dice and reports whether the red die shows a higher number than the green die.
+
+*Here is code for a function to simulate rolling a single six-sided die.*
+
+```{r}
+#| echo: true
+roll <- function() {
+  outcomes <- 1:6
+  probs <- rep(1.0/6.0, 6)
+  sample(outcomes, size = 1, prob = probs)
+}
+
+roll()
+```
+
+*Now, create a function that uses `roll()` to simulate an outcome for each of the red and green dice and reports whether the red is higher than the green.*
+
+```{r}
+#| echo: true
+red_higher <- function() {
+  red_roll <- roll() # generate red dice value
+  green_roll <- roll() # generate green dice value
+  return(red_roll > green_roll)# return true if red value is higher than green value
+}
+```
+
+##### c) Simulate this experiment 10,000 times and report the proportion of times the red die was higher. Compare the result to the theoretical probability.
+
+*Use the `replicate()` function as demonstrated in the slides.*
+
+```{r}
+#| echo: true
+samp <- replicate(10000, red_higher()) # store the samples here
+mean(samp) # use the samples to calculate the proportion
+```
+
+## Exercise 2
+
+##### An emergency phone line receives calls for both fire and non-fire incidents. Fire-related calls occur 30% of the time. Each phone call is independent of the other phone calls.
+
+##### a) Write an R function that accepts argument n, simulates n independent phone calls, and reports whether each call is related to a fire incident.
+
+*Complete the code below to simulate n calls and return the sequence of outcomes.*
+
+```{r}
+#| echo: true
+calls <- function(n) {
+  sample(c("fire", "other"), size = n, replace = TRUE, prob = c(.3,.7))
+}
+```
+
+##### b) Repeatedly simulate sequences of two calls to answer the following question: What is the probability that among the next two calls, exactly one is fire related?
+
+*First, you will need a function that accepts `n`, runs `calls(n)`, and counts how many of the simulated calls are fire related.* *Then, use the `replicate()` function.*
+
+```{r}
+#| echo: true
+
+count_calls <- function(n) {
+  is_fire <- calls(n) == "fire"
+  sum(is_fire) # now count how many elements of is_fire are TRUE
+}
+
+call_list <- replicate(10000, count_calls(2)) # replicate count_calls many times and store samples here
+
+exact1 <- call_list == 1 # use the samples to calculate the proportion
+mean(exact1)
+```
+
+##### c) Repeatedly simulate sequences of five calls to answer the following question: What is the probability that among the next five calls, at least three are fire related?
+
+```{r}
+#| echo: true
+
+call_list <- replicate(10000, count_calls(5)) # replicate count_calls (with five calls) many times and store samples here
+morethan3 <- call_list >= 3
+mean(morethan3) # use the samples to calculate the proportion
+```

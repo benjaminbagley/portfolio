@@ -7,4 +7,7 @@ speed_sim - I was playing a card game when I wondered "How often does a random d
   so I decided to code up something to answer my questions. This was a passion project, and I'm really proud of how it turned out given that I hadn't really done
   any coding in R before this point. 
 
-hw_simulation_intro - the very first probability simulation I made in R. Very bare bones. 
+hw_simulation_intro - the very first probability simulation I made in R. 
+
+HouseTempReport - I had 50000 data points of humidity and temperature measurements from several days in my home. I decided to put together a report to learn the 
+  basics of Power BI, and this was the result. 
